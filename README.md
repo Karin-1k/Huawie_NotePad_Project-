@@ -1,16 +1,5 @@
 # huawie_notepad_project
 
-A new Flutter project.
+it is a notePad application so used for recording the daily notes or (To-Does). I used many tools such as flutter, JavaScript ,Node js, xamp, postman, git/github ,mySql and i used socket io with the mySql for getting real time server.
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
