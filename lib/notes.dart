@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:focused_menu/focused_menu.dart';
 import 'package:focused_menu/modals.dart';
 import 'package:huawie_notepad_project/addNotes.dart';
@@ -8,6 +8,8 @@ import 'dart:convert' as convert;
 import 'package:huawie_notepad_project/main.dart';
 import 'package:huawie_notepad_project/updateNotes.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+
+List<dynamic> data1 = [];
 
 class Notes extends StatefulWidget {
   const Notes({super.key});
@@ -18,7 +20,6 @@ class Notes extends StatefulWidget {
 
 class _NotesState extends State<Notes> {
   late IO.Socket socket;
-  List<dynamic> _data = [];
   int length_notes = 0;
   int _currentIndex_NavigationBar = 0;
 
@@ -31,8 +32,10 @@ class _NotesState extends State<Notes> {
         final data = convert.json.decode(response.body);
 
         setState(() {
-          _data = List.from(data);
-          length_notes = _data.length;
+          data1 = List.from(data);
+          _searchList = data1;
+
+          length_notes = data1.length;
         });
       } else {
         print('the data could not get correctly ${response.statusCode}');
@@ -44,6 +47,7 @@ class _NotesState extends State<Notes> {
 
   late int _indexLastNote;
   late int _individualIndex;
+  List<dynamic> _searchList = [];
   @override
   void initState() {
     super.initState();
@@ -59,12 +63,13 @@ class _NotesState extends State<Notes> {
           'new-note',
           (data) => {
                 setState(() {
-                  _data.add(data);
-                  length_notes = _data.length;
-                  _indexLastNote = _data.indexOf(data);
+                  data1.add(data);
+                  length_notes = data1.length;
+                  _indexLastNote = data1.indexOf(data);
+                  _individualIndex = _indexLastNote;
                   print('this is new note datas: $data');
                 }),
-                print(_data),
+                print(data1),
               });
 
       //listining for update last note
@@ -72,7 +77,7 @@ class _NotesState extends State<Notes> {
           'update_lastNote',
           (data) => {
                 setState(() {
-                  _data[_indexLastNote] = data;
+                  data1[_indexLastNote] = data;
                 })
               });
 
@@ -81,10 +86,44 @@ class _NotesState extends State<Notes> {
           'update',
           (data) => {
                 setState(() {
-                  _data[_individualIndex] = data;
+                  data1[_individualIndex] = data;
+                })
+              });
+
+      //  deleting notes
+      socket.on(
+          'delete',
+          (data) => {
+                setState(() {
+                  data1.removeAt(_individualIndex);
+                  length_notes = data1.length;
                 })
               });
     } catch (e) {
+      print(e);
+    }
+  }
+
+// searching for notes
+  void searchNote(String query) {
+    final suggestions = _searchList.where((note) {
+      final title = note['Title'];
+      final content = note['Content'];
+      final input = query.toLowerCase();
+      return title.toString().toLowerCase().contains(input) ||
+          content.toString().toLowerCase().contains(input);
+    });
+    print(suggestions);
+    setState(() => data1 = suggestions.toList());
+  }
+
+// deleting notes from DB
+  Future<void> deleteNotes(int ID) async {
+    try {
+      final data = await http
+          .delete(Uri.parse(url(route: 'delete')), body: {'id': '$ID'});
+    } catch (e) {
+      print('the err is in deleting notes');
       print(e);
     }
   }
@@ -93,6 +132,7 @@ class _NotesState extends State<Notes> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
+        backgroundColor: Color.fromARGB(255, 241, 240, 240),
         appBar: kappbar,
         body: Padding(
           padding: const EdgeInsets.only(left: 11, right: 11),
@@ -105,56 +145,196 @@ class _NotesState extends State<Notes> {
               ),
               Padding(
                   padding: const EdgeInsets.only(left: 10),
-                  child: Text('$length_notes note(s)')),
+                  child: Text('${length_notes} note(s)')),
               const SizedBox(
                 height: 30,
               ),
-              ksearch,
-              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.only(left: 5),
+                child: Container(
+                  width: 360,
+                  height: 40,
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: TextField(
+                    enabled: true,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.black54,
+                      ),
+                      hintText: 'Search notes',
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.transparent),
+                      ),
+                      border: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.transparent),
+                      ),
+                    ),
+                    onChanged: searchNote,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
               Expanded(
                 flex: 1,
                 child: ListView.builder(
-                  itemCount: _data.length,
+                  itemCount: data1.length,
                   itemBuilder: (context, index) => Container(
-                    height: 80,
+                    height: 87,
                     width: 380,
                     child: Card(
-                      color: Colors.amber,
+                      color: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: InkWell(
-                        child: ListTile(
-                          title: Text(_data[index]['Title']),
-                          subtitle: Text(_data[index]['Content']),
+                        child: Padding(
+                          padding: EdgeInsets.only(left: 8, top: 12),
+                          child: ListTile(
+                            title: Text(
+                              data1[index]['Title'],
+                              style: TextStyle(
+                                  fontSize: 24,
+                                  overflow: TextOverflow.ellipsis,
+                                  letterSpacing: 0.3),
+                            ),
+                            subtitle: Text(
+                              data1[index]['Content'],
+                              style: TextStyle(
+                                  overflow: TextOverflow.ellipsis,
+                                  letterSpacing: 0.3,
+                                  fontSize: 20),
+                            ),
+                          ),
                         ),
                         onTap: () {
                           setState(() {
                             _individualIndex = index;
                             print('individual id is :$_individualIndex');
                           });
-dynamic id   =_data[index]['id'];
-print(id);
-if (id.runtimeType == int) {
-  
-                          Navigator.push(
+                          dynamic id = data1[index]['id'];
+                          print('the id for entering is :$id');
+                          if (id.runtimeType == int) {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => UpdateNotes(
+                                          title: data1[index]['Title'],
+                                          body: data1[index]['Content'],
+                                          id: id,
+                                        )));
+                          } else {
+                            print('the whole datas in _data List $data1');
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => UpdateNotes(
-                                        title: _data[index]['Title'],
-                                        body: _data[index]['Content'],
-                                        id: id,
-                                      )));
-} else {
-       Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => UpdateNotes(
-                                        title: _data[index]['Title'],
-                                        body: _data[index]['Content'],
-                                        id:int.parse(id),
-                                      )));
-}
+                                builder: (context) => UpdateNotes(
+                                  title: data1[index]['Title'],
+                                  body: data1[index]['Content'],
+                                  id: int.parse(id),
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        onLongPress: () async {
+                          setState(() {
+                            _individualIndex = index;
+                            print('individual id is :$_individualIndex');
+                          });
+                          dynamic id = data1[index]['id'];
+
+                          if (id.runtimeType == int) {
+                            showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                      actions: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            ElevatedButton(
+                                                style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty
+                                                            .all(Color.fromARGB(
+                                                                255,
+                                                                31,
+                                                                71,
+                                                                232))),
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                },
+                                                child: Text('Cancel  ')),
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                await deleteNotes(id);
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text(
+                                                ' delete  ',
+                                              ),
+                                              style: ButtonStyle(
+                                                  backgroundColor:
+                                                      MaterialStateProperty.all(
+                                                          Color.fromARGB(255,
+                                                              168, 35, 7))),
+                                            ),
+                                          ],
+                                        )
+                                      ],
+                                      title: Text(' you want to delete it?'),
+                                      contentPadding: EdgeInsets.all(20.0),
+                                    ));
+                          } else {
+                            showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                      actions: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceAround,
+                                          children: [
+                                            ElevatedButton(
+                                                style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty
+                                                            .all(Color.fromARGB(
+                                                                255,
+                                                                31,
+                                                                71,
+                                                                232))),
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                },
+                                                child: Text('Cancel  ')),
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                await deleteNotes(
+                                                    int.parse(id));
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text(
+                                                ' delete  ',
+                                                style: TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                              style: ButtonStyle(
+                                                  backgroundColor:
+                                                      MaterialStateProperty.all(
+                                                          Color.fromARGB(255,
+                                                              168, 35, 7))),
+                                            ),
+                                          ],
+                                        )
+                                      ],
+                                      title: Text(' you want to delete it?'),
+                                      contentPadding: EdgeInsets.all(20.0),
+                                    ));
+                          }
                         },
                       ),
                     ),
@@ -165,8 +345,10 @@ if (id.runtimeType == int) {
           ),
         ),
         bottomNavigationBar: BottomNavigationBar(
-          selectedItemColor: Colors.blue,
-          selectedIconTheme: IconThemeData(color: Colors.blue),
+          selectedItemColor: Color.fromARGB(255, 31, 71, 232),
+          selectedIconTheme: IconThemeData(
+            color: Color.fromARGB(255, 31, 71, 232),
+          ),
           currentIndex: _currentIndex_NavigationBar,
           onTap: (newIndex) {
             setState(() {
@@ -174,8 +356,16 @@ if (id.runtimeType == int) {
             });
           },
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.notes), label: 'Notes'),
-            BottomNavigationBarItem(icon: Icon(Icons.check), label: 'To-dos'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notes),
+              label: 'Notes',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(
+                Icons.check,
+              ),
+              label: 'To-dos',
+            ),
           ],
         ),
         floatingActionButton: floatingAB(),
@@ -186,35 +376,8 @@ if (id.runtimeType == int) {
 
 // _________________________________________
 
-Padding ksearch = Padding(
-  padding: const EdgeInsets.only(left: 5),
-  child: Container(
-    width: 360,
-    height: 40,
-    decoration: BoxDecoration(
-        color: Colors.amber, borderRadius: BorderRadius.circular(20)),
-    child: const TextField(
-      enabled: true,
-      decoration: InputDecoration(
-        prefixIcon: Icon(
-          Icons.search,
-          color: Colors.black,
-        ),
-        hintText: 'Search notes',
-        enabledBorder: InputBorder.none,
-        focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.transparent),
-        ),
-        border: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.transparent),
-        ),
-      ),
-    ),
-  ),
-);
-
 AppBar kappbar = AppBar(
-  backgroundColor: Colors.white,
+  backgroundColor: Color.fromARGB(255, 241, 240, 240),
   elevation: 0.0,
   actions: [
     Padding(
@@ -254,8 +417,8 @@ class _floatingABState extends State<floatingAB> {
           ),
         );
       },
-      child: Icon(Icons.add, size: 35),
-      backgroundColor: Colors.blue,
+      child: Icon(Icons.add, size: 40),
+      backgroundColor: Color.fromARGB(255, 31, 71, 232),
     );
   }
 }
@@ -276,13 +439,13 @@ Widget FilterNotes = Column(
           onPressed: () {},
         ),
         FocusedMenuItem(
-          title: const Text('Share'),
-          trailingIcon: Icon(Icons.share),
+          title: const Text('My favourites'),
+          trailingIcon: Icon(Icons.share_outlined),
           onPressed: () {},
         ),
         FocusedMenuItem(
           title: const Text(
-            'Delete',
+            'Recently Delete',
             style: TextStyle(color: Colors.white),
           ),
           trailingIcon: const Icon(
@@ -290,11 +453,6 @@ Widget FilterNotes = Column(
             color: Colors.white,
           ),
           backgroundColor: Colors.red,
-          onPressed: () {},
-        ),
-        FocusedMenuItem(
-          title: const Text(
-              '______________________________________________________'),
           onPressed: () {},
         ),
       ],
@@ -314,8 +472,14 @@ Widget FilterNotes = Column(
           //  border: Border.all(color: Colors.red),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text('All notes^',
-            style: TextStyle(fontSize: 30, color: Colors.black)),
+        child: Padding(
+          padding: EdgeInsets.only(left: 8),
+          child: const Text('All notes',
+              style: TextStyle(
+                  fontSize: 30,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w500)),
+        ),
       ),
     ),
   ],

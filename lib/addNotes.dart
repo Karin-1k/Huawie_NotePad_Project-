@@ -5,6 +5,7 @@ import 'package:huawie_notepad_project/main.dart';
 import 'package:huawie_notepad_project/notes.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert' as convert;
+import 'package:share_plus/share_plus.dart';
 
 class AddNotes extends StatefulWidget {
   const AddNotes(
@@ -30,9 +31,12 @@ class _AddNotesState extends State<AddNotes> {
           'Title': _titleController.text,
           'Content': _contextController.text,
         });
-      } else {}
+        print('widget.id is : ${widget.id}');
+      } else {
+        print('the err is in insert Data');
+      }
     } catch (e) {
-      print('here is the err');
+      print('the err is in insert Data');
       print(e.toString());
     }
   }
@@ -60,10 +64,9 @@ class _AddNotesState extends State<AddNotes> {
       if (response.statusCode == 200) {
         final data = convert.json.decode(response.body);
         setState(() {
-          print(data);
-          _theLastNoteId = data[0]['id'];
-          print(
-              'this is the value of the last node : ${_theLastNoteId.runtimeType}');
+          print('the id from fetching is : $data');
+          _theLastNoteId = data[0]['id'] ?? 0; // agadare ama ba zyam krdwa
+          print('this is the value of the last node : ${_theLastNoteId}');
         });
       } else {
         print('the data could not get correctly ${response.statusCode}');
@@ -73,6 +76,20 @@ class _AddNotesState extends State<AddNotes> {
     }
   }
 
+  // deleting notes from DB
+  Future<void> deleteNotes() async {
+    try {
+      final data = await http.delete(Uri.parse(url(route: 'delete')),
+          body: {'id': '${_theLastNoteId!}'});
+      print('______');
+      print(_theLastNoteId);
+    } catch (e) {
+      print('the err is in deleting notes');
+      print(e);
+    }
+  }
+
+  late int err = widget.id;
   int? _theLastNoteId;
   bool isUpdate = false;
   bool _visibilityIcons = true;
@@ -91,16 +108,88 @@ class _AddNotesState extends State<AddNotes> {
   void initState() {
     super.initState();
     _focusNode.requestFocus();
+    print('widget.id is : ${widget.id}');
   }
 
+  bool _isDescardChanged = false;
   Widget build(BuildContext context) {
     MediaQueryData _mediaQueryData = MediaQuery.of(context);
     return Scaffold(
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
+            onPressed: () async {
+              if (_titleController.text.isEmpty &&
+                  _contextController.text.isEmpty) {
+                await deleteNotes();
+                Navigator.pop(context);
+              } else if (_isDescardChanged) {
+                Navigator.pop(context);
+              } else {
+                showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                          actions: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                ElevatedButton(
+                                    style: ButtonStyle(
+                                        backgroundColor:
+                                            MaterialStateProperty.all(
+                                                Color.fromARGB(
+                                                    255, 168, 35, 7))),
+                                    onPressed: () async {
+                                      // Dismiss the keyboard
+                                      FocusScope.of(context).unfocus();
+                                      Navigator.pop(context);
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text('Cancel')),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    setState(() => _isDescardChanged = true);
+                                    _change_bottm_icons = false;
+                                    if (isUpdate) {
+                                      await updateData();
+                                    } else {
+                                      await fetchingId();
+                                      await insertData();
+                                      await fetchingId();
+                                    }
+                                    isUpdate = true;
+                                    // Dismiss the keyboard
+                                    FocusScope.of(context).unfocus();
+                                    _visibilityIcons = !_visibilityIcons;
+                                    if (widget.id == 0) {
+                                      data1[0]['id'] = '${_theLastNoteId!}';
+                                    }
+                                    Navigator.pop(context);
+                                    Navigator.pop(context);
+                                    // if (data1[0]['id'] != null &&
+                                    //     data1[1]['id'] != null) {
+                                    //   data1[0]['id'] =
+                                    //       '${(int.parse(data1[1]['id'])) - (1)}';
+                                    // }
+
+                                    print('kara gian ay kara gian ');
+                                  },
+                                  child: Text(
+                                    '    ok    ',
+                                  ),
+                                  style: ButtonStyle(
+                                      backgroundColor:
+                                          MaterialStateProperty.all(
+                                              Color.fromARGB(
+                                                  255, 31, 71, 232))),
+                                ),
+                              ],
+                            )
+                          ],
+                          title: Text('  Save Changed?'),
+                          contentPadding: EdgeInsets.all(20.0),
+                        ));
+              }
             },
             icon: const Icon(
               Icons.arrow_back,
@@ -117,24 +206,40 @@ class _AddNotesState extends State<AddNotes> {
           ),
           Visibility(
             child: IconButton(
-                onPressed: () {}, icon: Icon(Icons.redo, color: Colors.black)),
+                onPressed: () {
+                  print(data1[1]['id']);
+                },
+                icon: Icon(Icons.redo, color: Colors.black)),
             visible: _visibilityIcons,
           ),
           Visibility(
               child: IconButton(
                   onPressed: () async {
-                    _change_bottm_icons = false;
-                    if (isUpdate) {
-                      await updateData();
+                    if (_titleController.text.isEmpty &&
+                        _contextController.text.isEmpty) {
+                      await deleteNotes();
+                      Navigator.pop(context);
                     } else {
-                      await fetchingId();
-                      await insertData();
-                      await fetchingId();
+                      setState(() => _isDescardChanged = true);
+                      _change_bottm_icons = false;
+                      if (isUpdate) {
+                        await updateData();
+                      } else {
+                        await fetchingId();
+                        await insertData();
+                        await fetchingId();
+                      }
+                      isUpdate = true;
+                      // Dismiss the keyboard
+                      FocusScope.of(context).unfocus();
+                      _visibilityIcons = !_visibilityIcons;
+                      if (widget.id == 0) {
+                        data1[0]['id'] = '${_theLastNoteId!}';
+                      }
+                      if (data1[0]['id'] != null && data1[1]['id'] != null) {
+                        data1[0]['id'] = '${(int.parse(data1[1]['id'])) - (1)}';
+                      }
                     }
-                    isUpdate = true;
-                    // Dismiss the keyboard
-                    FocusScope.of(context).unfocus();
-                    _visibilityIcons = !_visibilityIcons;
                   },
                   icon: Icon(Icons.check, color: Colors.black)),
               visible: _visibilityIcons),
@@ -298,23 +403,96 @@ class _AddNotesState extends State<AddNotes> {
               child: Container(
                 width: 50,
                 height: 70,
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Column(
-                      children: [Icon(Icons.share, size: 25), Text('Share')],
+                    InkWell(
+                      child: const Column(
+                        children: [
+                          Icon(Icons.share_outlined, size: 25),
+                          Text('Share')
+                        ],
+                      ),
+                      onTap: () async {
+                        if (_titleController.text.isNotEmpty ||
+                            _contextController.text.isNotEmpty ||
+                            (_titleController.text.isNotEmpty &&
+                                _contextController.text.isNotEmpty)) {
+                          try {
+                            await Share.share(
+                                '${_titleController.text}\n${_contextController.text}');
+                          } catch (e) {
+                            print('keshaka la share button daya!');
+                            print(e.toString());
+                          }
+                        }
+                      },
                     ),
-                    Column(
+                    const Column(
                       children: [
-                        Icon(Icons.favorite, size: 25),
+                        Icon(Icons.favorite_outline, size: 25),
                         Text('Favorite')
                       ],
                     ),
-                    Column(
-                      children: [Icon(Icons.delete, size: 25), Text('Delete')],
+                    InkWell(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.delete_outlined,
+                            size: 25,
+                            color: Color.fromARGB(255, 168, 35, 7),
+                          ),
+                          Text(
+                            ' Delete  ',
+                            style: TextStyle(
+                                color: Color.fromARGB(255, 168, 35, 7)),
+                          )
+                        ],
+                      ),
+                      onTap: () {
+                        showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                                  actions: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        ElevatedButton(
+                                            style: ButtonStyle(
+                                                backgroundColor:
+                                                    MaterialStateProperty.all(
+                                                        Color.fromARGB(
+                                                            255, 31, 71, 232))),
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: Text('Cancel ')),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            await deleteNotes();
+                                            Navigator.pop(context);
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text(
+                                            ' delete  ',
+                                          ),
+                                          style: ButtonStyle(
+                                              backgroundColor:
+                                                  MaterialStateProperty.all(
+                                                      Color.fromARGB(
+                                                          255, 168, 35, 7))),
+                                        ),
+                                      ],
+                                    )
+                                  ],
+                                  title: Text(' you want to delete it?'),
+                                  contentPadding: EdgeInsets.all(20.0),
+                                ));
+                      },
                     ),
-                    Column(
+                    const Column(
                       children: [Icon(Icons.more_vert, size: 25), Text('More')],
                     )
                   ],

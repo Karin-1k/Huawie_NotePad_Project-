@@ -98,6 +98,22 @@ app.put('/api/update', (req, res) => {
     })
 });
 
+// deleting notes 
+app.delete('/api/delete', (req, res) => {
+
+    let query = 'DELETE FROM notes WHERE id=?';
+    const { id } = req.body;
+    db.query(query, [id], (err, ok) => {
+        if (err) {
+            console.log(err);
+            res.send(err);
+        } else {
+            res.send('data deleted!');
+            io.emit('delete', { id });
+        }
+    });
+});
+
 const server = app.listen(5000, () => {
     console.log('server created!');
     io = socketio(server)

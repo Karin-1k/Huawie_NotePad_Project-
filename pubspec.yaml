@@ -39,6 +39,8 @@ dependencies:
   focused_menu: ^1.0.5
   http: ^0.13.5
   socket_io_client: ^2.0.2
+  get: ^4.6.5
+  share_plus: ^7.0.2
   
 
 dev_dependencies:

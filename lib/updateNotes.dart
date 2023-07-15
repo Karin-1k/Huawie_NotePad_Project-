@@ -3,6 +3,8 @@ import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/material.dart';
 import 'package:huawie_notepad_project/main.dart';
 import 'package:http/http.dart' as http;
+import 'package:huawie_notepad_project/notes.dart';
+import 'package:share_plus/share_plus.dart';
 
 class UpdateNotes extends StatefulWidget {
   const UpdateNotes(
@@ -30,6 +32,17 @@ class _UpdateNotesState extends State<UpdateNotes> {
     }
   }
 
+// deleting notes from DB
+  Future<void> deleteNotes() async {
+    try {
+      final data = await http
+          .delete(Uri.parse(url(route: 'delete')), body: {'id': '$_id'});
+    } catch (e) {
+      print('the err is in deleting notes');
+      print(e);
+    }
+  }
+
   String? _titleController;
   String? _contextController;
   int? _id;
@@ -41,7 +54,7 @@ class _UpdateNotesState extends State<UpdateNotes> {
 
   bool _change_bottm_icons = true;
   FocusNode _focusNode = FocusNode();
-
+  bool _isDescardChanged = false;
   @override
   void initState() {
     super.initState();
@@ -49,9 +62,6 @@ class _UpdateNotesState extends State<UpdateNotes> {
     _titleController = widget.title;
     _contextController = widget.body;
     _id = widget.id;
-    print(_titleController);
-    print(_contextController);
-    print(_id);
   }
 
   Widget build(BuildContext context) {
@@ -60,8 +70,60 @@ class _UpdateNotesState extends State<UpdateNotes> {
       backgroundColor: Color.fromRGBO(255, 255, 255, 1),
       appBar: AppBar(
         leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
+            onPressed: () async {
+              if (_titleController!.isEmpty && _contextController!.isEmpty) {
+                await deleteNotes();
+                Navigator.pop(context);
+              } else {
+                if (_isDescardChanged) {
+                  Navigator.pop(context);
+                } else {
+                  showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                            actions: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  ElevatedButton(
+                                      style: ButtonStyle(
+                                          backgroundColor:
+                                              MaterialStateProperty.all(
+                                                  Color.fromARGB(
+                                                      255, 168, 35, 7))),
+                                      onPressed: () async {
+                                        // Dismiss the keyboard
+                                        FocusScope.of(context).unfocus();
+                                        Navigator.pop(context);
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text('Cancel')),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      // Dismiss the keyboard
+                                      FocusScope.of(context).unfocus();
+                                      await updateData();
+                                      Navigator.pop(context);
+                                      Navigator.pop(context);
+                                    },
+                                    child: Text(
+                                      '    ok    ',
+                                    ),
+                                    style: ButtonStyle(
+                                        backgroundColor:
+                                            MaterialStateProperty.all(
+                                                Color.fromARGB(
+                                                    255, 31, 71, 232))),
+                                  ),
+                                ],
+                              )
+                            ],
+                            title: Text('  Save Changed?'),
+                            contentPadding: EdgeInsets.all(20.0),
+                          ));
+                }
+              }
             },
             icon: const Icon(
               Icons.arrow_back,
@@ -73,24 +135,34 @@ class _UpdateNotesState extends State<UpdateNotes> {
           Visibility(
             child: IconButton(
                 onPressed: () async {},
-                icon: Icon(Icons.undo, color: Colors.black)),
+                icon: Icon(Icons.undo_sharp, color: Colors.black87)),
             visible: _visibilityIcons,
           ),
           Visibility(
             child: IconButton(
-                onPressed: () {}, icon: Icon(Icons.redo, color: Colors.black)),
+                onPressed: () {},
+                icon: Icon(Icons.redo_outlined, color: Colors.black87)),
             visible: _visibilityIcons,
           ),
           Visibility(
               child: IconButton(
                   onPressed: () async {
-                    _change_bottm_icons = false;
-                    await updateData();
-                    // Dismiss the keyboard
-                    FocusScope.of(context).unfocus();
-                    _visibilityIcons = !_visibilityIcons;
+                    if (_titleController!.isEmpty &&
+                        _contextController!.isEmpty) {
+                      await deleteNotes();
+                      Navigator.pop(context);
+                    } else {
+                      setState(() => _isDescardChanged = true);
+
+                      _change_bottm_icons = false;
+                      // Dismiss the keyboard
+                      FocusScope.of(context).unfocus();
+                      await updateData();
+
+                      _visibilityIcons = !_visibilityIcons;
+                    }
                   },
-                  icon: Icon(Icons.check, color: Colors.black)),
+                  icon: Icon(Icons.check, color: Colors.black87)),
               visible: _visibilityIcons),
         ],
       ),
@@ -168,7 +240,6 @@ class _UpdateNotesState extends State<UpdateNotes> {
                 initialValue: widget.body,
                 onChanged: (value) => setState(() {
                   _contextController = value;
-                  print(_contextController);
                 }),
               ),
             )),
@@ -191,15 +262,13 @@ class _UpdateNotesState extends State<UpdateNotes> {
                         Opacity(
                           opacity: _opacity,
                           child: Icon(
-                            Icons.check_circle,
+                            Icons.check_circle_outline,
                             size: 25,
                           ),
                         ),
                         Opacity(
                           opacity: _opacity,
-                          child: Text(
-                            'Cheaklist',
-                          ),
+                          child: Text('Cheaklist'),
                         )
                       ],
                     ),
@@ -208,15 +277,13 @@ class _UpdateNotesState extends State<UpdateNotes> {
                         Opacity(
                           opacity: _opacity,
                           child: Icon(
-                            Icons.text_format,
+                            Icons.text_format_outlined,
                             size: 25,
                           ),
                         ),
                         Opacity(
                           opacity: _opacity,
-                          child: Text(
-                            'Style',
-                          ),
+                          child: Text('Style'),
                         )
                       ],
                     ),
@@ -224,12 +291,10 @@ class _UpdateNotesState extends State<UpdateNotes> {
                       children: [
                         Opacity(
                             opacity: _opacity,
-                            child: Icon(Icons.image, size: 25)),
+                            child: Icon(Icons.image_outlined, size: 25)),
                         Opacity(
                           opacity: _opacity,
-                          child: Text(
-                            'Gallery',
-                          ),
+                          child: Text('Gallery'),
                         )
                       ],
                     ),
@@ -238,15 +303,13 @@ class _UpdateNotesState extends State<UpdateNotes> {
                         Opacity(
                           opacity: _opacity,
                           child: Icon(
-                            Icons.draw,
+                            Icons.draw_outlined,
                             size: 25,
                           ),
                         ),
                         Opacity(
                           opacity: _opacity,
-                          child: Text(
-                            'HandWrite',
-                          ),
+                          child: Text('HandWrite'),
                         )
                       ],
                     )
@@ -259,23 +322,96 @@ class _UpdateNotesState extends State<UpdateNotes> {
               child: Container(
                 width: 50,
                 height: 70,
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Column(
-                      children: [Icon(Icons.share, size: 25), Text('Share')],
+                    InkWell(
+                      child: const Column(
+                        children: [
+                          Icon(Icons.share_outlined, size: 25),
+                          Text('Share')
+                        ],
+                      ),
+                      onTap: () async {
+                        if (_titleController!.isNotEmpty ||
+                            _contextController!.isNotEmpty ||
+                            (_titleController!.isNotEmpty &&
+                                _contextController!.isNotEmpty)) {
+                          try {
+                            await Share.share(
+                                '${_titleController}\n${_contextController}');
+                          } catch (e) {
+                            print('keshaka la share button daya!');
+                            print(e.toString());
+                          }
+                        }
+                      },
                     ),
-                    Column(
+                    const Column(
                       children: [
-                        Icon(Icons.favorite, size: 25),
+                        Icon(Icons.favorite_outline, size: 25),
                         Text('Favorite')
                       ],
                     ),
-                    Column(
-                      children: [Icon(Icons.delete, size: 25), Text('Delete')],
+                    InkWell(
+                      child: const Column(
+                        children: [
+                          Icon(
+                            Icons.delete_outlined,
+                            size: 25,
+                            color: Color.fromARGB(255, 168, 35, 7),
+                          ),
+                          Text(
+                            'Delete',
+                            style: TextStyle(
+                                color: Color.fromARGB(255, 168, 35, 7)),
+                          )
+                        ],
+                      ),
+                      onTap: () {
+                        showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                                  actions: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceAround,
+                                      children: [
+                                        ElevatedButton(
+                                            style: ButtonStyle(
+                                                backgroundColor:
+                                                    MaterialStateProperty.all(
+                                                        Color.fromARGB(
+                                                            255, 31, 71, 232))),
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                            },
+                                            child: Text('Cancel ')),
+                                        ElevatedButton(
+                                          onPressed: () async {
+                                            await deleteNotes();
+                                            Navigator.pop(context);
+                                            Navigator.pop(context);
+                                          },
+                                          child: Text(
+                                            ' delete  ',
+                                          ),
+                                          style: ButtonStyle(
+                                              backgroundColor:
+                                                  MaterialStateProperty.all(
+                                                      Color.fromARGB(
+                                                          255, 168, 35, 7))),
+                                        ),
+                                      ],
+                                    )
+                                  ],
+                                  title: Text(' you want to delete it?'),
+                                  contentPadding: EdgeInsets.all(20.0),
+                                ));
+                      },
                     ),
-                    Column(
+                    const Column(
                       children: [Icon(Icons.more_vert, size: 25), Text('More')],
                     )
                   ],
