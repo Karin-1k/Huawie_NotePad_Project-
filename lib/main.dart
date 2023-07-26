@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:huawie_notepad_project/notes.dart';
 
-int api = 5;
+int api = 6;
 void main() async {
   // bo am projecta hamesh ka west git bakar benet bnwsa
   // git add .
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-        title: 'Flutter Demo',
+        title: 'notePad Application',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),

@@ -183,7 +183,7 @@ class _NotesState extends State<Notes> {
                 child: ListView.builder(
                   itemCount: data1.length,
                   itemBuilder: (context, index) => Container(
-                    height: 87,
+                    height: 95,
                     width: 380,
                     child: Card(
                       color: Colors.white,
@@ -207,6 +207,7 @@ class _NotesState extends State<Notes> {
                                   overflow: TextOverflow.ellipsis,
                                   letterSpacing: 0.3,
                                   fontSize: 20),
+                              maxLines: 1,
                             ),
                           ),
                         ),
