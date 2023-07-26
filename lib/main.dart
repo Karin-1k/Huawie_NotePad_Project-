@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:huawie_notepad_project/notes.dart';
 
-int api = 6;
+int api = 13;
 void main() async {
   // bo am projecta hamesh ka west git bakar benet bnwsa
   // git add .
